@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Picnic Participants List</title>
+<style>
+  :root{
+    --blue:#1414C8;
+    --orange:#E08A1E;
+    --text:#1a1a1a;
+    --muted:#444;
+    --line:#000;
+    --bg:#EAF0FB;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:Arial, Helvetica, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #DCE7FA, transparent 60%),
+      radial-gradient(1000px 700px at 100% 0%, #F3E7C4, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    padding:24px 14px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .page-controls{
+    max-width:794px;margin:0 auto 18px;
+    display:flex;justify-content:center;
+  }
+  .download-btn{
+    display:inline-flex;align-items:center;gap:9px;
+    background:linear-gradient(135deg,#132C64,#2E4F9E 60%, #4368C4);
+    color:#fff;border:none;
+    padding:13px 28px;border-radius:12px;
+    font-size:.98rem;font-weight:700;letter-spacing:.2px;
+    cursor:pointer;font-family:-apple-system,Arial,sans-serif;
+    box-shadow:0 10px 24px -6px rgba(15,37,87,.45);
+    transition:transform .12s ease, box-shadow .2s ease;
+  }
+  .download-btn:hover{transform:translateY(-2px);box-shadow:0 16px 32px -6px rgba(15,37,87,.55);}
+  .download-btn:active{transform:translateY(0) scale(.97);}
+  .download-btn:disabled{opacity:.6;cursor:progress;transform:none;}
+  .download-btn svg{width:17px;height:17px;flex-shrink:0;}
+
+  /* ===================== A4 PAGE (captured as PNG) ===================== */
+  #ticket{
+    width:794px;     /* A4 @ 96dpi = 794 x 1123 px */
+    min-height:1123px;
+    margin:0 auto;
+    background:#fff;
+    padding:40px 50px 50px;
+    position:relative;
+    box-shadow:0 20px 50px -10px rgba(15,37,87,.3), 0 4px 14px rgba(15,37,87,.1);
+  }
+
+  .meta-top{
+    text-align:center;
+    font-size:1.05rem;
+    color:var(--text);
+    margin-bottom:4px;
+    line-height:1.6;
+  }
+
+  h1.title{
+    text-align:center;
+    color:var(--blue);
+    font-size:1.7rem;
+    font-weight:800;
+    margin:14px 0 4px;
+    letter-spacing:.2px;
+  }
+  h2.school{
+    text-align:center;
+    color:#111;
+    font-size:1.35rem;
+    font-weight:700;
+    margin:0 0 20px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    border:2px solid var(--line);
+  }
+  thead th{
+    border:1.5px solid var(--line);
+    padding:12px 10px;
+    font-size:1.02rem;
+    font-weight:700;
+    color:var(--orange);
+    text-align:center;
+    background:#fff;
+  }
+  thead th.name-col{ text-align:left; padding-left:24px; }
+
+  tbody td{
+    border:1px solid var(--line);
+    padding:10px 10px;
+    font-size:.97rem;
+    color:var(--text);
+  }
+  tbody td.sn{ text-align:center; width:70px; }
+  tbody td.name{ padding-left:24px; }
+  tbody td.amt{ text-align:center; width:180px; }
+
+  tfoot td{
+    border:1.5px solid var(--line);
+    padding:12px 10px;
+    font-size:1.05rem;
+    font-weight:800;
+  }
+  tfoot td.total-label{
+    text-align:right;
+    padding-right:18px;
+  }
+  tfoot td.total-value{
+    text-align:center;
+    color:var(--blue);
+  }
+
+  .empty-state, .loading, .error-state{
+    text-align:center;color:var(--muted);padding:80px 16px;font-size:.95rem;line-height:1.6;
+  }
+  .error-state{color:#8A5A00;}
+  .error-state code{background:#00000010;padding:2px 6px;border-radius:5px;}
+
+  .spinner{
+    width:34px;height:34px;border-radius:50%;
+    border:3px solid #ddd;border-top-color:var(--blue);
+    margin:0 auto 14px;animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Responsive scaling for small screens — the captured PNG stays true A4 */
+  @media (max-width:830px){
+    #ticket{
+      width:100%;
+      max-width:794px;
+      min-height:0;
+    }
+  }
+  @media (max-width:480px){
+    #ticket{ padding:28px 18px 34px; }
+    thead th, tbody td, tfoot td{ padding:8px 6px; font-size:.82rem; }
+    h1.title{font-size:1.2rem;}
+    h2.school{font-size:1.05rem;}
+    .meta-top{font-size:.9rem;}
+  }
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .page-controls{display:none;}
+    #ticket{box-shadow:none;width:210mm;min-height:297mm;}
+  }
+</style>
+</head>
+<body>
+
+<div class="page-controls">
+  <button class="download-btn" id="downloadBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span id="downloadBtnText">Download as PNG (A4)</span>
+  </button>
+</div>
+
+<div id="ticket">
+  <div class="loading" id="loadingState">
+    <div class="spinner"></div>
+    Loading participant list…
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBv7MKmb2aevcaFOajr02DmBF7JNxNxIDw",
+  authDomain: "dozo-3ad6f.firebaseapp.com",
+  databaseURL: "https://dozo-3ad6f-default-rtdb.firebaseio.com",
+  projectId: "dozo-3ad6f",
+  storageBucket: "dozo-3ad6f.firebasestorage.app",
+  messagingSenderId: "843093561816",
+  appId: "1:843093561816:web:6ab6a609c0c393a50b62ad"
+};
+
+const ticket = document.getElementById('ticket');
+
+try {
+  firebase.initializeApp(firebaseConfig);
+} catch (err) {
+  ticket.innerHTML = `<div class="error-state">⚠️ Could not connect to Firebase.<br><code>${err.message}</code></div>`;
+}
+
+const db = firebase.database();
+let details = {};
+let participants = {};
+let gotDetails = false, gotParticipants = false;
+
+db.ref('picnicList/details').on('value', (snap) => {
+  details = snap.val() || {};
+  gotDetails = true;
+  tryRender();
+}, (err) => showError(err));
+
+db.ref('picnicList/participants').on('value', (snap) => {
+  participants = snap.val() || {};
+  gotParticipants = true;
+  tryRender();
+}, (err) => showError(err));
+
+function showError(err) {
+  ticket.innerHTML = `<div class="error-state">⚠️ Couldn't load the list.<br><code>${esc(err.message)}</code></div>`;
+}
+
+function tryRender() {
+  if (gotDetails && gotParticipants) render();
+}
+
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function render() {
+  const entries = Object.values(participants).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const schoolName = esc(details.schoolName || 'Durbar High School');
+  const title1 = esc(details.listTitle1 || "2083 Class 11 'B'");
+  const title2 = esc(details.listTitle2 || 'Picnic Participants List');
+  const eventDate = esc(details.eventDate || '2083/04/16');
+  const eventTime = esc(details.eventTime || '6:00 AM');
+
+  if (entries.length === 0) {
+    ticket.innerHTML = `
+      <div class="meta-top">Date: ${eventDate}<br>Time: ${eventTime}</div>
+      <h1 class="title">${title1} ${title2}</h1>
+      <h2 class="school">${schoolName}</h2>
+      <div class="empty-state">No participants added yet. Check back soon!</div>
+    `;
+    return;
+  }
+
+  const total = entries.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const rows = entries.map((p, i) => `
+    <tr>
+      <td class="sn">${i + 1}.</td>
+      <td class="name">${esc(p.name)}</td>
+      <td class="amt">rs. ${Number(p.amount || 0).toLocaleString('en-IN')}</td>
+    </tr>
+  `).join('');
+
+  ticket.innerHTML = `
+    <div class="meta-top">Date: ${eventDate}<br>Time: ${eventTime}</div>
+    <h1 class="title">${title1} ${title2}</h1>
+    <h2 class="school">${schoolName}</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:70px;">S. N.</th>
+          <th class="name-col">Participants Name</th>
+          <th style="width:180px;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" class="total-label">Total (${entries.length} Students)</td>
+          <td class="total-value">Rs. ${total.toLocaleString('en-IN')}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+
+document.getElementById('downloadBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('downloadBtn');
+  const btnText = document.getElementById('downloadBtnText');
+  const target = document.getElementById('ticket');
+
+  btn.disabled = true;
+  const originalText = btnText.textContent;
+  btnText.textContent = 'Preparing A4 image…';
+
+  // Force true A4 pixel dimensions for the capture, regardless of on-screen responsive scaling
+  const prevWidth = target.style.width;
+  const prevMinHeight = target.style.minHeight;
+  target.style.width = '794px';
+  target.style.minHeight = '1123px';
+
+  try {
+    const canvas = await html2canvas(target, {
+      scale: 2.83465, // 794px * 2.83465 ≈ 2251px ≈ 300dpi at A4 width
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      width: 794,
+      windowWidth: 794,
+    });
+
+    const link = document.createElement('a');
+    link.download = 'picnic-participants-list-A4.png';
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    alert('Could not generate image: ' + err.message);
+  } finally {
+    target.style.width = prevWidth;
+    target.style.minHeight = prevMinHeight;
+    btn.disabled = false;
+    btnText.textContent = originalText;
+  }
+});
+</script>
+</body>
+</html>
